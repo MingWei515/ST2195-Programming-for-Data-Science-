@@ -1,0 +1,142 @@
+---
+title: "220456586_ST2195_R_Part1"
+output: html_document
+---
+## Answering the Question:
+
+### (a)
+```{r}
+# Define f(x)
+f <- function(x) {
+  return(0.5 * exp(-abs(x)))
+}
+
+# Set up parameters
+x0 <- 0
+N <- 10000
+s <- 1
+
+# Initialise variables
+x <- numeric(N)
+x[1] <- rnorm(1)
+
+# Implement the Random walk Metropolis algorithm
+for (i in 2:N) {
+  # Simulate a proposal from a normal distribution
+  y <- rnorm(1, x[i-1], s)
+  
+  # Compute the ratio
+  ratio <- f(y) / f(x[i-1])
+  
+  # Generate a uniform random number
+  u <- runif(1)
+  
+  # Check if the proposal is accepted
+  if (log(u) < log(ratio)) {
+    x[i] <- y
+  } else {
+    x[i] <- x[i-1]
+  }
+}
+
+# Plot Histogram
+hist(x, probability = TRUE, main = "Histogram and Kernel Density Plot", breaks = 50, ylim = c(0, 0.5))
+
+# Plot Theoretical f(x)
+curve(f, add = TRUE, col = "blue", lwd = 1.5, lty = 2)
+
+# Plot Kernel Density Plot
+lines(density(x), col = "red", lwd = 1.5)
+
+# Add legend
+legend("topright", legend = c("Histogram", "Kernel Density Plot", "True f(x)"),
+       bty = "n",
+       lty = c(0, 1, 2),
+       col = c("grey", "red", "blue"),
+       lwd = c(0, 2, 2),
+       pch = c(22, NA, NA),
+       pt.bg = c("grey", NA, NA),
+       pt.cex = 2)
+
+# Format the plot
+box()
+
+# Display statistics
+cat("Sample Mean:", mean(x), "\n")
+cat("Sample Standard Deviation:", sd(x), "\n")
+```
+
+### (b)
+```{r}
+# Set parameters
+N <- 2000
+J <- 4
+s_values <- seq(0.001, 1, length.out = 1000)
+
+# Function to implement random walk Metropolis algorithm and calculate chains
+metropolis_algorithm <- function(N, s, J) {
+  chains <- matrix(0, nrow = N, ncol = J)
+  
+  for (j in 1:J) {
+    # Initialise variables
+    x <- numeric(N)
+    x[1] <- rnorm(1, 0, 1)
+    for (i in 2:N) {
+      y <- rnorm(1, x[i-1], s)
+      ratio <- f(y) / f(x[i-1])
+      u <- runif(1)
+      if (log(u) < log(ratio)) {
+        x[i] <- y
+      } else {
+        x[i] <- x[i-1]
+      }
+    }
+    chains[, j] <- x
+  }
+    
+  return(chains)
+}
+
+# Function to calculate R_hat
+calculate_R_hat <- function(chains) {
+  # Compute Mj and Vj for each chain
+  Mj_values <- apply(chains, 2, mean)
+  Vj_values <- apply((chains - apply(chains, 2, mean))^2, 2, mean)
+  
+  # Compute the overall within sample variance W
+  W <- mean(Vj_values)
+  
+  # Compute the overall sample mean M
+  M <- mean(Mj_values)
+  
+  # Compute the between sample variance B
+  B <- mean((Mj_values - M)^2)
+  
+  # Compute R_hat
+  R_hat <- sqrt((B + W) / W)
+  
+  return(R_hat)
+}
+
+# Calculate R_hat for different s values
+R_hat_values <- numeric(length(s_values))
+for (i in 1:length(s_values)) {
+  chains <- metropolis_algorithm(N, s_values[i], J)
+  R_hat_values[i] <- calculate_R_hat(chains)
+}
+
+# Plot R_hat values
+plot(s_values, R_hat_values, type = "l", xlab = "s", ylab = "R_hat", main = "R_hat over s")
+
+# Display statistics for s value, s = 0.001
+s <- 0.001
+chains <- metropolis_algorithm(N, s, J)
+R_hat <- calculate_R_hat(chains)
+cat("R_hat for s =", s, ":", R_hat, "\n")
+
+# Display statistics for s = 1, to show convergence
+s <- 1
+chains <- metropolis_algorithm(N, s, J)
+R_hat <- calculate_R_hat(chains)
+cat("As s values increases, R_hat comes close to 1, for example R_hat for s =", s, ":", R_hat, "\n")
+```
